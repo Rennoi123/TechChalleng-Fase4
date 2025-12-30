@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Tech Challenge Fase 4 - Quarkus (Java 17) + AWS Lambda + DynamoDB + SNS
+
+Parameters:
+  AdminEmail:
+    Type: String
+    Description: Email que recebera alertas e relatorios (SNS subscription)
+  AwsRegionParam:
+    Type: String
+    Default: us-east-1
+
+Globals:
+  Function:
+    Runtime: java17
+    Timeout: 30
+    MemorySize: 1024
+    Tracing: Active
+    Environment:
+      Variables:
+        AWS_REGION: !Ref AwsRegionParam
+        TABLE_NAME: !Ref FeedbackTable
+        SNS_TOPIC_ARN: !Ref AdminTopic
+
+Resources:
+  FeedbackTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  AdminTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: TechChallengeFeedbackAdmin
+
+  AdminSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref AdminEmail
+      TopicArn: !Ref AdminTopic
+
+  FeedbackApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - "*"
+        AllowMethods:
+          - POST
+          - OPTIONS
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api-lambda/target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FeedbackTable
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AdminTopic.TopicName
+      Events:
+        PostAvaliacao:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref FeedbackApi
+            Path: /avaliacao
+            Method: POST
+
+  WeeklyReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: report-lambda/target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref FeedbackTable
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AdminTopic.TopicName
+      Events:
+        WeeklySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(7 days)
+
+  ApiErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm when ApiFunction has errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ApiFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  ApiUrl:
+    Description: URL base da API
+    Value: !Sub "https://${FeedbackApi}.execute-api.${AWS::Region}.amazonaws.com"
