@@ -1,45 +1,16 @@
-# Tech Challenge - Fase 4 (Quarkus + AWS Lambda) — Java 17
+# Tech Challenge – Fase 4 (Quarkus + AWS Lambda | Java 17)
 
-## O que este projeto entrega
-- Cloud + Serverless (AWS Lambda)
-- 2 funções com responsabilidade única
-- Endpoint `POST /avaliacao`
-- Notificação automática de crítico (SNS -> email)
-- Relatório semanal (média + contagens por dia e urgência) + envio por SNS
-- Deploy automatizado (AWS SAM)
-- Monitoramento (CloudWatch logs + Alarm) e tracing ativo
+## Arquitetura
+Arquitetura serverless orientada a eventos, utilizando 3 funções AWS Lambda, cada uma com responsabilidade única.
 
-## Módulos
-- `common`: modelos, repositório DynamoDB e serviços (SNS, relatório)
-- `api-lambda`: Lambda HTTP com `POST /avaliacao`
-- `report-lambda`: Lambda agendada para gerar relatório semanal
+1. Feedback API Lambda
+2. Notification Lambda
+3. Weekly Report Lambda
 
-## Build
-Na raiz:
-```bash
-mvn -q -DskipTests package
-```
+## Tecnologias
+AWS Lambda, API Gateway, DynamoDB, EventBridge, SNS, CloudWatch, Java 17, Quarkus, AWS SAM
 
-Saídas esperadas:
-- `api-lambda/target/function.zip`
-- `report-lambda/target/function.zip`
-
-## Deploy (AWS SAM)
-```bash
+## Deploy
+mvn clean package -DskipTests
 sam build
 sam deploy --guided
-```
-
-Ao informar `AdminEmail`, confirme a inscrição que chega por email do SNS.
-
-## Teste do endpoint
-Após o deploy, use o output `ApiUrl`:
-
-```bash
-curl -X POST "$API_URL/avaliacao" \
-  -H "Content-Type: application/json" \
-  -d '{"descricao":"Aula confusa", "nota": 2}'
-```
-
-## Observações
-- O relatório usa `scan` no DynamoDB (suficiente para baixo volume e para o Tech Challenge).

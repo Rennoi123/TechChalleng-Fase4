@@ -1,114 +1,80 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Tech Challenge Fase 4 - Quarkus (Java 17) + AWS Lambda + DynamoDB + SNS
-
-Parameters:
-  AdminEmail:
-    Type: String
-    Description: Email que recebera alertas e relatorios (SNS subscription)
-  AwsRegionParam:
-    Type: String
-    Default: us-east-1
+Description: Tech Challenge Fase 4 - Feedback Serverless (Quarkus)
 
 Globals:
   Function:
     Runtime: java17
     Timeout: 30
-    MemorySize: 1024
+    MemorySize: 512
     Tracing: Active
     Environment:
       Variables:
-        AWS_REGION: !Ref AwsRegionParam
-        TABLE_NAME: !Ref FeedbackTable
-        SNS_TOPIC_ARN: !Ref AdminTopic
+        TABLE_NAME: FeedbackTable
+        SNS_TOPIC_ARN: !Ref NotificationTopic
 
 Resources:
-  FeedbackTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-
-  AdminTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      DisplayName: TechChallengeFeedbackAdmin
-
-  AdminSubscription:
-    Type: AWS::SNS::Subscription
-    Properties:
-      Protocol: email
-      Endpoint: !Ref AdminEmail
-      TopicArn: !Ref AdminTopic
-
-  FeedbackApi:
-    Type: AWS::Serverless::HttpApi
-    Properties:
-      CorsConfiguration:
-        AllowOrigins:
-          - "*"
-        AllowHeaders:
-          - "*"
-        AllowMethods:
-          - POST
-          - OPTIONS
-
-  ApiFunction:
+  FeedbackFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: api-lambda/target/function.zip
       Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      CodeUri: feedback-lambda/target/function.zip
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref FeedbackTable
-        - SNSPublishMessagePolicy:
-            TopicName: !GetAtt AdminTopic.TopicName
+        - EventBridgePutEventsPolicy: {}
       Events:
-        PostAvaliacao:
-          Type: HttpApi
+        Api:
+          Type: Api
           Properties:
-            ApiId: !Ref FeedbackApi
             Path: /avaliacao
-            Method: POST
+            Method: post
 
-  WeeklyReportFunction:
+  NotificationFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Handler: br.com.techchallenge.notification.NotificationHandler::handleRequest
+      CodeUri: notification-lambda/target/function.zip
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt NotificationTopic.TopicName
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: br.com.techchallenge.report.WeeklyReportHandler::handleRequest
       CodeUri: report-lambda/target/function.zip
-      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref FeedbackTable
         - SNSPublishMessagePolicy:
-            TopicName: !GetAtt AdminTopic.TopicName
-      Events:
-        WeeklySchedule:
-          Type: ScheduleV2
-          Properties:
-            ScheduleExpression: rate(7 days)
+            TopicName: !GetAtt NotificationTopic.TopicName
 
-  ApiErrorAlarm:
-    Type: AWS::CloudWatch::Alarm
+  FeedbackTable:
+    Type: AWS::Serverless::SimpleTable
     Properties:
-      AlarmDescription: Alarm when ApiFunction has errors
-      Namespace: AWS/Lambda
-      MetricName: Errors
-      Dimensions:
-        - Name: FunctionName
-          Value: !Ref ApiFunction
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      TreatMissingData: notBreaching
+      TableName: FeedbackTable
+      PrimaryKey:
+        Name: id
+        Type: String
 
-Outputs:
-  ApiUrl:
-    Description: URL base da API
-    Value: !Sub "https://${FeedbackApi}.execute-api.${AWS::Region}.amazonaws.com"
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: feedback-alerts
+
+  WeeklySchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: cron(0 8 ? * MON *)
+      Targets:
+        - Arn: !GetAtt ReportFunction.Arn
+          Id: ReportTarget
+
+  PermissionForEvents:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ReportFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt WeeklySchedule.Arn
