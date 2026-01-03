@@ -16,8 +16,6 @@ Globals:
     Tracing: Active
     Environment:
       Variables:
-        AWS_REGION:
-          Ref: AwsRegionParam
         TABLE_NAME:
           Ref: FeedbackTable
         SNS_TOPIC_ARN:
@@ -76,8 +74,8 @@ Resources:
           Properties:
             ApiId:
               Ref: FeedbackApi
-            Path: /avaliacao
-            Method: POST
+            Path: /{proxy+}
+            Method: ANY
   WeeklyReportFunction:
     Type: AWS::Serverless::Function
     Properties:
