@@ -40,6 +40,3 @@ curl -X POST "$API_URL/avaliacao" \
   -H "Content-Type: application/json" \
   -d '{"descricao":"Aula confusa", "nota": 2}'
 ```
-
-## Observações
-- O relatório usa `scan` no DynamoDB (suficiente para baixo volume e para o Tech Challenge).

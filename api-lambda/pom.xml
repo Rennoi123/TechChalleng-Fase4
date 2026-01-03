@@ -14,26 +14,22 @@
 
   <dependencies>
 
-    <!-- 🔴 OBRIGATÓRIO: ATIVA CDI -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-arc</artifactId>
     </dependency>
 
-    <!-- Common (com Jandex) -->
     <dependency>
       <groupId>br.com.fiap.postech</groupId>
       <artifactId>common</artifactId>
       <version>${project.version}</version>
     </dependency>
 
-    <!-- Lambda HTTP -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-amazon-lambda-http</artifactId>
     </dependency>
 
-    <!-- REST + Jackson -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-resteasy-reactive-jackson</artifactId>

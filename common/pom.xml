@@ -14,7 +14,6 @@
 
   <dependencies>
 
-    <!-- CDI / Inject (APENAS APIs, não Quarkus) -->
     <dependency>
       <groupId>jakarta.enterprise</groupId>
       <artifactId>jakarta.enterprise.cdi-api</artifactId>
@@ -33,7 +32,6 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- AWS SDK -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>dynamodb</artifactId>
@@ -49,7 +47,6 @@
       <artifactId>sns</artifactId>
     </dependency>
 
-    <!-- Jackson -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
@@ -65,7 +62,6 @@
 
   </dependencies>
 
-  <!-- Jandex: OBRIGATÓRIO -->
   <build>
     <plugins>
       <plugin>
