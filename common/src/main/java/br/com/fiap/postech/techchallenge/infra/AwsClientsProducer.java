@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.sns.SnsClient;
@@ -19,6 +20,7 @@ public class AwsClientsProducer {
   public DynamoDbEnhancedClient dynamoEnhanced() {
     DynamoDbClient client = DynamoDbClient.builder()
         .region(Region.of(region))
+        .httpClient(UrlConnectionHttpClient.create())
         .build();
     return DynamoDbEnhancedClient.builder()
         .dynamoDbClient(client)
@@ -30,6 +32,7 @@ public class AwsClientsProducer {
   public SnsClient snsClient() {
     return SnsClient.builder()
         .region(Region.of(region))
+        .httpClient(UrlConnectionHttpClient.create())
         .build();
   }
 }

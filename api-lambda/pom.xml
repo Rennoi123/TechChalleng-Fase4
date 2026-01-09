@@ -35,6 +35,11 @@
       <artifactId>quarkus-resteasy-reactive-jackson</artifactId>
     </dependency>
 
+      <dependency>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>url-connection-client</artifactId>
+      </dependency>
+
   </dependencies>
 
   <build>
